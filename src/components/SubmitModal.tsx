@@ -17,13 +17,41 @@ export default function SubmitModal({ isOpen, onClose, onSubmit }: SubmitModalPr
     boltUrl: '',
     tags: '',
   });
+  const [errors, setErrors] = useState({
+    githubUrl: '',
+    boltUrl: '',
+  });
   const { submitProject, loading } = useProjectSubmit();
 
   if (!isOpen) return null;
 
+  const validateUrls = () => {
+    const newErrors = {
+      githubUrl: '',
+      boltUrl: '',
+    };
+
+    // Validate GitHub URL
+    if (!formData.githubUrl.includes('github.com')) {
+      newErrors.githubUrl = 'URL must be from github.com';
+    }
+
+    // Validate bolt.new URL
+    if (!formData.boltUrl.includes('bolt.new')) {
+      newErrors.boltUrl = 'URL must be from bolt.new';
+    }
+
+    setErrors(newErrors);
+    return !newErrors.githubUrl && !newErrors.boltUrl;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!validateUrls()) {
+      return;
+    }
+
     try {
       const projectData = {
         title: formData.title,
@@ -105,10 +133,18 @@ export default function SubmitModal({ isOpen, onClose, onSubmit }: SubmitModalPr
             <input
               type="url"
               value={formData.githubUrl}
-              onChange={(e) => setFormData({ ...formData, githubUrl: e.target.value })}
-              className="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700 focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+              onChange={(e) => {
+                setFormData({ ...formData, githubUrl: e.target.value });
+                setErrors({ ...errors, githubUrl: '' }); // Clear error on change
+              }}
+              className={`w-full px-4 py-2 bg-gray-800 rounded-lg border ${
+                errors.githubUrl ? 'border-red-500' : 'border-gray-700'
+              } focus:border-purple-500 focus:ring-1 focus:ring-purple-500`}
               required
             />
+            {errors.githubUrl && (
+              <p className="text-red-500 text-sm mt-1">{errors.githubUrl}</p>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">
@@ -117,10 +153,18 @@ export default function SubmitModal({ isOpen, onClose, onSubmit }: SubmitModalPr
             <input
               type="url"
               value={formData.boltUrl}
-              onChange={(e) => setFormData({ ...formData, boltUrl: e.target.value })}
-              className="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700 focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+              onChange={(e) => {
+                setFormData({ ...formData, boltUrl: e.target.value });
+                setErrors({ ...errors, boltUrl: '' }); // Clear error on change
+              }}
+              className={`w-full px-4 py-2 bg-gray-800 rounded-lg border ${
+                errors.boltUrl ? 'border-red-500' : 'border-gray-700'
+              } focus:border-purple-500 focus:ring-1 focus:ring-purple-500`}
               required
             />
+            {errors.boltUrl && (
+              <p className="text-red-500 text-sm mt-1">{errors.boltUrl}</p>
+            )}
           </div>
           {/* <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">
