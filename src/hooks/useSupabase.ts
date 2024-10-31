@@ -159,6 +159,7 @@ export function useProjectSubmit() {
     description: string;
     image: string;
     githubUrl: string;
+    boltUrl: string;
     tags: string[];
   }) => {
     setLoading(true);
@@ -178,6 +179,7 @@ export function useProjectSubmit() {
             description: projectData.description,
             image_url: projectData.image,
             github_url: projectData.githubUrl,
+            bolt_url: projectData.boltUrl,
             author_id: user.id,
           },
         ])

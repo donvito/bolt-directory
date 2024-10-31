@@ -22,4 +22,5 @@ export interface Project {
   };
   tags?: string[];
   liked?: boolean;
+  bolt_url?: string;
 }
