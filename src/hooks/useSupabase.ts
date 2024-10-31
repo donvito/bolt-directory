@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import { Project, User } from '../types';
 
 export function useAuth() {
-  const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   const formatUser = (session: { user: SupabaseUser } | null): User | null => {

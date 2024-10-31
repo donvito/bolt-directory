@@ -3,6 +3,7 @@ export interface User {
   avatarUrl: string;
   isAuthenticated: boolean;
   id: string;
+  email: string;
 }
 
 export interface Project {

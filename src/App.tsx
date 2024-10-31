@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Search } from 'lucide-react';
 import Header from './components/Header';
 import ProjectCard from './components/ProjectCard';
@@ -30,7 +30,7 @@ function App() {
         provider: 'github',
         options: {
           redirectTo: window.location.origin,
-        },
+        },        
       });
       
       if (error) {
@@ -68,7 +68,7 @@ function App() {
 
   const handleProjectUpdate = async (projectData: Partial<Project>) => {
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('projects')
         .update(projectData)
         .eq('id', editingProject?.id)
