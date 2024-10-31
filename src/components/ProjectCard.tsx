@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ExternalLink, Github, Heart, Trash2 } from 'lucide-react';
+import { ExternalLink, Github, Heart, Trash2, Edit2 } from 'lucide-react';
 import { Project } from '../types';
 import { useLikes } from '../hooks/useSupabase';
 import { useProjects } from '../hooks/useSupabase';
@@ -8,9 +8,10 @@ interface ProjectCardProps {
   project: Project;
   currentUserId?: string;
   onDelete?: (projectId: string) => Promise<void>;
+  onEdit?: (project: Project) => void;
 }
 
-export default function ProjectCard({ project, currentUserId, onDelete }: ProjectCardProps) {
+export default function ProjectCard({ project, currentUserId, onDelete, onEdit }: ProjectCardProps) {
   const { toggleLike, loading: likeLoading } = useLikes();
   const { refetch } = useProjects();
   const [optimisticLiked, setOptimisticLiked] = useState(project.user_has_liked);
@@ -77,13 +78,25 @@ export default function ProjectCard({ project, currentUserId, onDelete }: Projec
               </span>
             </button>
             {isOwner && (
-              <button
-                onClick={handleDelete}
-                className="text-gray-400 hover:text-red-500 transition-colors"
-                title="Delete project"
-              >
-                <Trash2 size={20} />
-              </button>
+              <>
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onEdit?.(project);
+                  }}
+                  className="text-gray-400 hover:text-blue-500 transition-colors"
+                  title="Edit project"
+                >
+                  <Edit2 size={20} />
+                </button>
+                <button
+                  onClick={handleDelete}
+                  className="text-gray-400 hover:text-red-500 transition-colors"
+                  title="Delete project"
+                >
+                  <Trash2 size={20} />
+                </button>
+              </>
             )}
           </div>
         </div>

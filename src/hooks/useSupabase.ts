@@ -7,9 +7,15 @@ export function useAuth() {
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const formatUser = (session: { user: SupabaseUser } | null) => {
+  const formatUser = (session: { user: SupabaseUser } | null): User | null => {
     if (!session?.user) return null;
-    return session.user;
+    return {
+      id: session.user.id,
+      email: session.user.email || '',
+      username: session.user.user_metadata.user_name || '',
+      avatarUrl: session.user.user_metadata.avatar_url || '',
+      isAuthenticated: true
+    };
   };
 
   useEffect(() => {

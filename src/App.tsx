@@ -3,14 +3,17 @@ import { Search } from 'lucide-react';
 import Header from './components/Header';
 import ProjectCard from './components/ProjectCard';
 import SubmitModal from './components/SubmitModal';
+import EditModal from './components/EditModal';
 import { useAuth, useProjects } from './hooks/useSupabase';
 import { supabase } from './lib/supabase';
+import { Project } from './types';
 
 function App() {
   const { user, loading: authLoading, logout } = useAuth();
   const { projects, loading: projectsLoading, refetch, deleteProject } = useProjects();
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
 
   // Only show loading state when auth is loading
   if (authLoading) {
@@ -60,6 +63,23 @@ function App() {
       await deleteProject(projectId);
     } catch (error) {
       console.error('Failed to delete project:', error);
+    }
+  };
+
+  const handleProjectUpdate = async (projectData: Partial<Project>) => {
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .update(projectData)
+        .eq('id', editingProject?.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      await refetch();
+      setEditingProject(null);
+    } catch (error) {
+      console.error('Error updating project:', error);
     }
   };
 
@@ -121,6 +141,7 @@ function App() {
                       project={project}
                       currentUserId={user?.id}
                       onDelete={handleDeleteProject}
+                      onEdit={setEditingProject}
                     />
                   ))}
                 </div>
@@ -138,6 +159,7 @@ function App() {
                     project={project}
                     currentUserId={user?.id}
                     onDelete={handleDeleteProject}
+                    onEdit={setEditingProject}
                   />
                 ))}
               </div>
@@ -151,6 +173,15 @@ function App() {
           isOpen={isSubmitModalOpen}
           onClose={() => setIsSubmitModalOpen(false)}
           onSubmit={handleProjectSubmit}
+        />
+      )}
+
+      {editingProject && (
+        <EditModal
+          project={editingProject}
+          isOpen={!!editingProject}
+          onClose={() => setEditingProject(null)}
+          onSubmit={handleProjectUpdate}
         />
       )}
     </div>
