@@ -8,13 +8,22 @@ interface SubmitModalProps {
   onSubmit: () => void;
 }
 
+interface FormData {
+  title: string;
+  description: string;
+  github_url: string;
+  bolt_url: string;
+  image_url: string;
+  tags: string;
+}
+
 export default function SubmitModal({ isOpen, onClose, onSubmit }: SubmitModalProps) {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     title: '',
     description: '',
-    image: '',
-    githubUrl: '',
-    boltUrl: '',
+    github_url: '',
+    bolt_url: '',
+    image_url: '',
     tags: '',
   });
   const [errors, setErrors] = useState({
@@ -32,12 +41,12 @@ export default function SubmitModal({ isOpen, onClose, onSubmit }: SubmitModalPr
     };
 
     // Validate GitHub URL
-    if (!formData.githubUrl.includes('github.com')) {
+    if (!formData.github_url.includes('github.com')) {
       newErrors.githubUrl = 'URL must be from github.com';
     }
 
     // Validate bolt.new URL
-    if (!formData.boltUrl.includes('bolt.new')) {
+    if (!formData.bolt_url.includes('bolt.new')) {
       newErrors.boltUrl = 'URL must be from bolt.new';
     }
 
@@ -56,9 +65,10 @@ export default function SubmitModal({ isOpen, onClose, onSubmit }: SubmitModalPr
       const projectData = {
         title: formData.title,
         description: formData.description,
-        image: formData.image,
-        githubUrl: formData.githubUrl,
-        tags: formData.tags.split(',').map((tag) => tag.trim()),
+        image: formData.image_url,
+        githubUrl: formData.github_url,
+        boltUrl: formData.bolt_url,
+        tags: formData.tags ? formData.tags.split(',').map((tag) => tag.trim()) : [],
       };
 
       await submitProject(projectData);
@@ -67,14 +77,15 @@ export default function SubmitModal({ isOpen, onClose, onSubmit }: SubmitModalPr
       setFormData({
         title: '',
         description: '',
-        image: '',
-        githubUrl: '',
-        boltUrl: '',
+        image_url: '',
+        github_url: '',
+        bolt_url: '',
         tags: '',
       });
 
       // Call onSubmit to refresh the projects list
       await onSubmit();
+      onClose(); // Close the modal after successful submission
     } catch (error) {
       console.error('Error submitting project:', error);
     }
@@ -120,8 +131,8 @@ export default function SubmitModal({ isOpen, onClose, onSubmit }: SubmitModalPr
             </label>
             <input
               type="url"
-              value={formData.image}
-              onChange={(e) => setFormData({ ...formData, image: e.target.value })}
+              value={formData.image_url}
+              onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
               className="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700 focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
               required
             />
@@ -132,9 +143,9 @@ export default function SubmitModal({ isOpen, onClose, onSubmit }: SubmitModalPr
             </label>
             <input
               type="url"
-              value={formData.githubUrl}
+              value={formData.github_url}
               onChange={(e) => {
-                setFormData({ ...formData, githubUrl: e.target.value });
+                setFormData({ ...formData, github_url: e.target.value });
                 setErrors({ ...errors, githubUrl: '' }); // Clear error on change
               }}
               className={`w-full px-4 py-2 bg-gray-800 rounded-lg border ${
@@ -152,9 +163,9 @@ export default function SubmitModal({ isOpen, onClose, onSubmit }: SubmitModalPr
             </label>
             <input
               type="url"
-              value={formData.boltUrl}
+              value={formData.bolt_url}
               onChange={(e) => {
-                setFormData({ ...formData, boltUrl: e.target.value });
+                setFormData({ ...formData, bolt_url: e.target.value });
                 setErrors({ ...errors, boltUrl: '' }); // Clear error on change
               }}
               className={`w-full px-4 py-2 bg-gray-800 rounded-lg border ${
@@ -166,7 +177,7 @@ export default function SubmitModal({ isOpen, onClose, onSubmit }: SubmitModalPr
               <p className="text-red-500 text-sm mt-1">{errors.boltUrl}</p>
             )}
           </div>
-          {/* <div>
+          <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">
               Tags (comma-separated)
             </label>
@@ -176,9 +187,8 @@ export default function SubmitModal({ isOpen, onClose, onSubmit }: SubmitModalPr
               onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
               className="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700 focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
               placeholder="react, typescript, tailwind"
-              required
             />
-          </div> */}
+          </div>
           <button
             type="submit"
             disabled={loading}

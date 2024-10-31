@@ -12,6 +12,7 @@ export interface Project {
   description: string;
   image_url: string;
   github_url: string;
+  bolt_url: string;
   author_id: string;
   created_at: string;
   profiles?: {

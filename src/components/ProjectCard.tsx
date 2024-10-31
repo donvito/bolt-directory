@@ -116,14 +116,16 @@ export default function ProjectCard({ project, currentUserId, onDelete }: Projec
             >
               <Github size={18} />
             </a>
-            <a
-              href={project.github_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-2 text-gray-400 hover:text-white transition-colors"
-            >
-              <ExternalLink size={18} />
-            </a>
+            {project.bolt_url && (
+              <a
+                href={project.bolt_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 text-gray-400 hover:text-white transition-colors"
+              >
+                <ExternalLink size={18} />
+              </a>
+            )}
           </div>
         </div>
       </div>

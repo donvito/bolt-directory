@@ -1,22 +1,15 @@
 import { useEffect, useState } from 'react';
-import { User } from '@supabase/supabase-js';
+import { User as SupabaseUser } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
-import { Project } from '../types';
+import { Project, User } from '../types';
 
 export function useAuth() {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<SupabaseUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const formatUser = (session: any) => {
+  const formatUser = (session: { user: SupabaseUser } | null) => {
     if (!session?.user) return null;
-    
-    return {
-      id: session.user.id,
-      email: session.user.email,
-      username: session.user.user_metadata?.user_name || session.user.user_metadata?.preferred_username,
-      avatarUrl: session.user.user_metadata?.avatar_url,
-      isAuthenticated: true,
-    };
+    return session.user;
   };
 
   useEffect(() => {
@@ -54,6 +47,7 @@ export function useAuth() {
 export function useProjects() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
 
   async function fetchProjects() {
     try {
@@ -81,7 +75,7 @@ export function useProjects() {
         ...project,
         tags: project.project_tags?.map((pt: { tags: { name: string } }) => pt.tags.name) || [],
         likes_count: project.likes?.length || 0,
-        user_has_liked: userId ? project.likes?.some(like => like.user_id === userId) : false,
+        user_has_liked: userId ? project.likes?.some((like: { user_id: string }) => like.user_id === userId) : false,
       })) || []);
     } catch (error) {
       console.error('Error fetching projects:', error);
@@ -114,11 +108,40 @@ export function useProjects() {
     }
   };
 
+  const createProject = async (projectData: {
+    title: string;
+    description: string;
+    github_url: string;
+    bolt_url: string;
+    image_url: string;
+    tags: string[];
+  }) => {
+    if (!user) throw new Error('User not authenticated');
+
+    const { data, error } = await supabase
+      .from('projects')
+      .insert([
+        {
+          ...projectData,
+          author_id: user.id,
+        },
+      ])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating project:', error);
+      return null;
+    }
+
+    return data;
+  };
+
   useEffect(() => {
     fetchProjects();
   }, []);
 
-  return { projects, loading, refetch: fetchProjects, deleteProject };
+  return { projects, loading, refetch: fetchProjects, deleteProject, createProject };
 }
 
 export function useProjectSubmit() {

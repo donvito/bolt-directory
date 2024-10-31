@@ -18,6 +18,7 @@ CREATE TABLE projects (
   description TEXT NOT NULL,
   image_url TEXT NOT NULL,
   github_url TEXT NOT NULL,
+  bolt_url TEXT,
   author_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
   featured BOOLEAN DEFAULT false,
   likes_count INTEGER DEFAULT 0,
@@ -147,6 +148,11 @@ CREATE POLICY "Likes are viewable by everyone"
 
 CREATE POLICY "Authenticated users can manage own likes"
   ON likes FOR ALL
+  USING (auth.uid() = user_id);
+
+-- Add this policy if not already present
+CREATE POLICY "Users can update their own projects" ON projects
+  FOR UPDATE
   USING (auth.uid() = user_id);
 
 ALTER TABLE projects
