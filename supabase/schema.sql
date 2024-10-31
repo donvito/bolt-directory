@@ -40,11 +40,13 @@ CREATE TABLE project_tags (
 );
 
 -- Create likes table
-CREATE TABLE likes (
-  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-  project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
-  PRIMARY KEY (user_id, project_id)
+create table likes (
+  id uuid default uuid_generate_v4() primary key,
+  user_id uuid references auth.users(id) on delete cascade,
+  project_id uuid references projects(id) on delete cascade,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  unique(user_id, project_id)
+); KEY (user_id, project_id)
 );
 
 -- Create function to handle user creation

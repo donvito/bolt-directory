@@ -14,6 +14,7 @@ export default function SubmitModal({ isOpen, onClose, onSubmit }: SubmitModalPr
     description: '',
     image: '',
     githubUrl: '',
+    boltUrl: '',
     tags: '',
   });
   const [loading, setLoading] = useState(false);
@@ -35,6 +36,7 @@ export default function SubmitModal({ isOpen, onClose, onSubmit }: SubmitModalPr
         description: '',
         image: '',
         githubUrl: '',
+        boltUrl: '',
         tags: '',
       });
     } catch (error) {
@@ -80,7 +82,7 @@ export default function SubmitModal({ isOpen, onClose, onSubmit }: SubmitModalPr
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">
-              Image URL
+              URL of Screenshot
             </label>
             <input
               type="url"
@@ -92,7 +94,7 @@ export default function SubmitModal({ isOpen, onClose, onSubmit }: SubmitModalPr
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">
-              GitHub URL
+              URL of GitHub Repo
             </label>
             <input
               type="url"
@@ -104,6 +106,18 @@ export default function SubmitModal({ isOpen, onClose, onSubmit }: SubmitModalPr
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">
+              bolt.new URL
+            </label>
+            <input
+              type="url"
+              value={formData.boltUrl}
+              onChange={(e) => setFormData({ ...formData, boltUrl: e.target.value })}
+              className="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700 focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+              required
+            />
+          </div>
+          {/* <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">
               Tags (comma-separated)
             </label>
             <input
@@ -114,7 +128,7 @@ export default function SubmitModal({ isOpen, onClose, onSubmit }: SubmitModalPr
               placeholder="react, typescript, tailwind"
               required
             />
-          </div>
+          </div> */}
           <button
             type="submit"
             disabled={loading}

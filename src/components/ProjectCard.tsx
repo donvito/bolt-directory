@@ -1,19 +1,49 @@
-import React from 'react';
-import { ExternalLink, Github, Heart } from 'lucide-react';
+import React, { useState } from 'react';
+import { ExternalLink, Github, Heart, Trash2 } from 'lucide-react';
 import { Project } from '../types';
 import { useLikes } from '../hooks/useSupabase';
+import { useProjects } from '../hooks/useSupabase';
 
 interface ProjectCardProps {
   project: Project;
+  currentUserId?: string;
+  onDelete?: (projectId: string) => Promise<void>;
 }
 
-export default function ProjectCard({ project }: ProjectCardProps) {
-  const { toggleLike, loading } = useLikes();
+export default function ProjectCard({ project, currentUserId, onDelete }: ProjectCardProps) {
+  const { toggleLike, loading: likeLoading } = useLikes();
+  const { refetch } = useProjects();
+  const [optimisticLiked, setOptimisticLiked] = useState(project.user_has_liked);
+  const [optimisticCount, setOptimisticCount] = useState(project.likes_count);
 
   const handleLike = async (e: React.MouseEvent) => {
     e.preventDefault();
-    await toggleLike(project.id);
+    if (!currentUserId) return; // Don't allow liking if not logged in
+    
+    // Optimistic update
+    setOptimisticLiked(!optimisticLiked);
+    setOptimisticCount(optimisticLiked ? optimisticCount - 1 : optimisticCount + 1);
+    
+    const success = await toggleLike(project.id);
+    if (success) {
+      await refetch();
+    } else {
+      // Revert optimistic update if failed
+      setOptimisticLiked(project.user_has_liked);
+      setOptimisticCount(project.likes_count);
+    }
   };
+
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!onDelete || !isOwner) return;
+    
+    if (window.confirm('Are you sure you want to delete this project? This action cannot be undone.')) {
+      await onDelete(project.id);
+    }
+  };
+
+  const isOwner = currentUserId === project.author_id;
 
   return (
     <div className="group relative bg-gray-900 rounded-xl overflow-hidden border border-gray-800 hover:border-purple-500/50 transition-all duration-300">
@@ -27,13 +57,35 @@ export default function ProjectCard({ project }: ProjectCardProps) {
       <div className="p-6">
         <div className="flex items-start justify-between">
           <h3 className="text-lg font-semibold text-white">{project.title}</h3>
-          <button 
-            onClick={handleLike}
-            disabled={loading}
-            className={`text-gray-400 hover:text-pink-500 transition-colors ${loading ? 'opacity-50' : ''}`}
-          >
-            <Heart size={20} className={project.liked ? 'fill-pink-500 text-pink-500' : ''} />
-          </button>
+          <div className="flex items-center space-x-2">
+            <button 
+              onClick={handleLike}
+              disabled={likeLoading || !currentUserId}
+              className="flex items-center space-x-1 text-gray-400 hover:text-pink-500 transition-colors disabled:opacity-50"
+              title={currentUserId ? 'Like this project' : 'Login to like projects'}
+            >
+              <Heart 
+                size={20} 
+                className={`transition-colors ${
+                  optimisticLiked ? 'fill-pink-500 text-pink-500' : ''
+                }`}
+              />
+              <span className={`text-sm ${
+                optimisticLiked ? 'text-pink-500' : 'text-gray-400'
+              }`}>
+                {optimisticCount}
+              </span>
+            </button>
+            {isOwner && (
+              <button
+                onClick={handleDelete}
+                className="text-gray-400 hover:text-red-500 transition-colors"
+                title="Delete project"
+              >
+                <Trash2 size={20} />
+              </button>
+            )}
+          </div>
         </div>
         <p className="mt-2 text-gray-400 text-sm">{project.description}</p>
         <div className="mt-4 flex flex-wrap gap-2">

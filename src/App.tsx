@@ -7,18 +7,19 @@ import { useAuth, useProjects } from './hooks/useSupabase';
 import { supabase } from './lib/supabase';
 
 function App() {
-  const { user, loading: authLoading } = useAuth();
-  const { projects, loading: projectsLoading, refetch } = useProjects();
+  const { user, loading: authLoading, logout } = useAuth();
+  const { projects, loading: projectsLoading, refetch, deleteProject } = useProjects();
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
-  // Handle initial load state
-  useEffect(() => {
-    if (!authLoading && !projectsLoading) {
-      setInitialLoadComplete(true);
-    }
-  }, [authLoading, projectsLoading]);
+  // Only show loading state when auth is loading
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+      </div>
+    );
+  }
 
   const handleGitHubLogin = async () => {
     try {
@@ -67,26 +68,37 @@ function App() {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      console.error('Failed to logout:', error);
+    }
+  };
+
+  const handleDeleteProject = async (projectId: string) => {
+    try {
+      await deleteProject(projectId);
+    } catch (error) {
+      console.error('Failed to delete project:', error);
+    }
+  };
+
   const filteredProjects = projects.filter((project) =>
     project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     project.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Only show loading state on initial load
-  if (!initialLoadComplete) {
-    return (
-      <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
-      </div>
-    );
-  }
+  const userProjects = filteredProjects.filter((project) => project.author_id === user?.id);
+  const otherProjects = filteredProjects.filter((project) => project.author_id !== user?.id);
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
       <Header
         user={user}
         onLogin={handleGitHubLogin}
-        onSubmit={() => setIsSubmitModalOpen(true)}
+        onLogout={handleLogout}
+        onSubmit={user ? () => setIsSubmitModalOpen(true) : undefined}
       />
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16">
@@ -114,18 +126,54 @@ function App() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredProjects.map((project) => (
-            <ProjectCard key={project.id} project={project} />
-          ))}
-        </div>
+        {projectsLoading ? (
+          <div className="flex justify-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+          </div>
+        ) : (
+          <>
+            {user && userProjects.length > 0 && (
+              <div className="mb-16">
+                <h2 className="text-2xl font-bold mb-6">Your Projects</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {userProjects.map((project) => (
+                    <ProjectCard 
+                      key={project.id} 
+                      project={project}
+                      currentUserId={user?.id}
+                      onDelete={handleDeleteProject}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div>
+              <h2 className="text-2xl font-bold mb-6">
+                {user ? 'Community Projects' : 'All Projects'}
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {otherProjects.map((project) => (
+                  <ProjectCard 
+                    key={project.id} 
+                    project={project}
+                    currentUserId={user?.id}
+                    onDelete={handleDeleteProject}
+                  />
+                ))}
+              </div>
+            </div>
+          </>
+        )}
       </main>
 
-      <SubmitModal
-        isOpen={isSubmitModalOpen}
-        onClose={() => setIsSubmitModalOpen(false)}
-        onSubmit={handleProjectSubmit}
-      />
+      {user && (
+        <SubmitModal
+          isOpen={isSubmitModalOpen}
+          onClose={() => setIsSubmitModalOpen(false)}
+          onSubmit={handleProjectSubmit}
+        />
+      )}
     </div>
   );
 }

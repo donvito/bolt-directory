@@ -1,55 +1,54 @@
 import { useEffect, useState } from 'react';
+import { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
-import type { User } from '../types';
-import type { Database } from '../types/supabase';
-
-type Profile = Database['public']['Tables']['profiles']['Row'];
-type Project = Database['public']['Tables']['projects']['Row'];
+import { Project } from '../types';
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const formatUser = (session: any) => {
+    if (!session?.user) return null;
+    
+    return {
+      id: session.user.id,
+      email: session.user.email,
+      username: session.user.user_metadata?.user_name || session.user.user_metadata?.preferred_username,
+      avatarUrl: session.user.user_metadata?.avatar_url,
+      isAuthenticated: true,
+    };
+  };
+
   useEffect(() => {
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        updateUser(session);
-      } else {
-        setLoading(false);
-      }
-    });
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_, session) => {
-      if (session) {
-        await updateUser(session);
-      } else {
-        setUser(null);
-      }
+      setUser(formatUser(session));
       setLoading(false);
     });
 
-    async function updateUser(session: any) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', session.user.id)
-        .single();
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(formatUser(session));
+      setLoading(false);
+    });
 
-      setUser({
-        username: profile?.username || session.user.user_metadata?.user_name || session.user.email?.split('@')[0] || '',
-        avatarUrl: profile?.avatar_url || session.user.user_metadata?.avatar_url || `https://github.com/${profile?.username}.png`,
-        isAuthenticated: true,
-      });
-    }
-
-    return () => {
-      subscription.unsubscribe();
-    };
+    return () => subscription.unsubscribe();
   }, []);
 
-  return { user, loading };
+  const logout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      setUser(null);
+    } catch (error) {
+      console.error('Error logging out:', error);
+      throw error;
+    }
+  };
+
+  return { user, loading, logout };
 }
 
 export function useProjects() {
@@ -58,14 +57,21 @@ export function useProjects() {
 
   async function fetchProjects() {
     try {
+      const { data: session } = await supabase.auth.getSession();
+      const userId = session?.session?.user?.id;
+
       const { data, error } = await supabase
         .from('projects')
         .select(`
           *,
-          profiles!projects_author_id_fkey(username, avatar_url),
+          profiles:author_id(
+            username,
+            avatar_url
+          ),
           project_tags(
             tags(name)
-          )
+          ),
+          likes(user_id)
         `)
         .order('created_at', { ascending: false });
 
@@ -73,7 +79,9 @@ export function useProjects() {
 
       setProjects(data?.map(project => ({
         ...project,
-        tags: project.project_tags?.map(pt => pt.tags.name) || []
+        tags: project.project_tags?.map((pt: { tags: { name: string } }) => pt.tags.name) || [],
+        likes_count: project.likes?.length || 0,
+        user_has_liked: userId ? project.likes?.some(like => like.user_id === userId) : false,
       })) || []);
     } catch (error) {
       console.error('Error fetching projects:', error);
@@ -82,11 +90,35 @@ export function useProjects() {
     }
   }
 
+  const deleteProject = async (projectId: string) => {
+    try {
+      // First delete related records in project_tags
+      await supabase
+        .from('project_tags')
+        .delete()
+        .eq('project_id', projectId);
+
+      // Then delete the project
+      const { error } = await supabase
+        .from('projects')
+        .delete()
+        .eq('id', projectId);
+
+      if (error) throw error;
+
+      // Refresh the projects list
+      await fetchProjects();
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      throw error;
+    }
+  };
+
   useEffect(() => {
     fetchProjects();
   }, []);
 
-  return { projects, loading, refetch: fetchProjects };
+  return { projects, loading, refetch: fetchProjects, deleteProject };
 }
 
 export function useProjectSubmit() {
@@ -162,8 +194,8 @@ export function useLikes() {
   const toggleLike = async (projectId: string) => {
     setLoading(true);
     try {
-      const session = await supabase.auth.getSession();
-      const user = session.data.session?.user;
+      const { data: session } = await supabase.auth.getSession();
+      const user = session?.session?.user;
       if (!user) throw new Error('User not authenticated');
 
       const { data: existingLike } = await supabase
@@ -174,18 +206,25 @@ export function useLikes() {
         .single();
 
       if (existingLike) {
-        await supabase
+        const { error } = await supabase
           .from('likes')
           .delete()
           .eq('user_id', user.id)
           .eq('project_id', projectId);
+          
+        if (error) throw error;
       } else {
-        await supabase
+        const { error } = await supabase
           .from('likes')
           .insert([{ user_id: user.id, project_id: projectId }]);
+          
+        if (error) throw error;
       }
+
+      return true;
     } catch (error) {
       console.error('Error toggling like:', error);
+      return false;
     } finally {
       setLoading(false);
     }
