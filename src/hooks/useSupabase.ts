@@ -122,6 +122,9 @@ export function useProjects() {
 }
 
 export function useProjectSubmit() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
   const submitProject = async (projectData: {
     title: string;
     description: string;
@@ -129,63 +132,76 @@ export function useProjectSubmit() {
     githubUrl: string;
     tags: string[];
   }) => {
-    const session = await supabase.auth.getSession();
-    const user = session.data.session?.user;
-    if (!user) throw new Error('User not authenticated');
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const session = await supabase.auth.getSession();
+      const user = session.data.session?.user;
+      if (!user) throw new Error('User not authenticated');
 
-    // First, create the project
-    const { data: project, error: projectError } = await supabase
-      .from('projects')
-      .insert([
-        {
-          title: projectData.title,
-          description: projectData.description,
-          image_url: projectData.image,
-          github_url: projectData.githubUrl,
-          author_id: user.id,
-        },
-      ])
-      .select()
-      .single();
-
-    if (projectError) throw projectError;
-
-    // Then, handle tags
-    for (const tagName of projectData.tags) {
-      // Try to find existing tag or create new one
-      const { data: tag, error: tagError } = await supabase
-        .from('tags')
-        .select('id')
-        .eq('name', tagName)
+      // First, create the project
+      const { data: project, error: projectError } = await supabase
+        .from('projects')
+        .insert([
+          {
+            title: projectData.title,
+            description: projectData.description,
+            image_url: projectData.image,
+            github_url: projectData.githubUrl,
+            author_id: user.id,
+          },
+        ])
+        .select()
         .single();
 
-      if (tagError && tagError.code !== 'PGRST116') { // PGRST116 is "not found"
-        throw tagError;
+      if (projectError) throw projectError;
+
+      // Then, handle tags
+      if (projectData.tags && projectData.tags.length > 0) {
+        for (const tagName of projectData.tags) {
+          // Try to find existing tag or create new one
+          const { data: tag, error: tagError } = await supabase
+            .from('tags')
+            .select('id')
+            .eq('name', tagName)
+            .single();
+
+          if (tagError && tagError.code !== 'PGRST116') { // PGRST116 is "not found"
+            throw tagError;
+          }
+
+          let tagId = tag?.id;
+
+          if (!tagId) {
+            const { data: newTag, error: newTagError } = await supabase
+              .from('tags')
+              .insert([{ name: tagName }])
+              .select()
+              .single();
+
+            if (newTagError) throw newTagError;
+            tagId = newTag.id;
+          }
+
+          // Create project-tag relationship
+          await supabase
+            .from('project_tags')
+            .insert([{ project_id: project.id, tag_id: tagId }]);
+        }
       }
 
-      let tagId = tag?.id;
-
-      if (!tagId) {
-        const { data: newTag, error: newTagError } = await supabase
-          .from('tags')
-          .insert([{ name: tagName }])
-          .select()
-          .single();
-
-        if (newTagError) throw newTagError;
-        tagId = newTag.id;
-      }
-
-      // Create project-tag relationship
-      await supabase
-        .from('project_tags')
-        .insert([{ project_id: project.id, tag_id: tagId }]);
+      return project;
+    } catch (err) {
+      const error = err as Error;
+      setError(error);
+      throw error;
+    } finally {
+      setLoading(false);
     }
-
-    return project;
   };
 
-  return { submitProject };
+  return { submitProject, loading, error };
 }
 
 export function useLikes() {

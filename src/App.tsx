@@ -38,33 +38,12 @@ function App() {
     }
   };
 
-  const handleProjectSubmit = async (data: {
-    title: string;
-    description: string;
-    image: string;
-    githubUrl: string;
-    tags: string[];
-  }) => {
-    if (!user?.id) {
-      console.error('User not logged in');
-      return;
-    }
-
+  const handleProjectSubmit = async () => {
     try {
-      const { error } = await supabase.from('projects').insert([{
-        title: data.title,
-        description: data.description,
-        image_url: data.image,
-        github_url: data.githubUrl,
-        author_id: user.id,
-      }]);
-
-      if (error) throw error;
-      
       await refetch();
       setIsSubmitModalOpen(false);
     } catch (error) {
-      console.error('Error submitting project:', error);
+      console.error('Error refreshing projects:', error);
     }
   };
 

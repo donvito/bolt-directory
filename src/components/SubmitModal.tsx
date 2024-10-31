@@ -5,7 +5,7 @@ import { useProjectSubmit } from '../hooks/useSupabase';
 interface SubmitModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: any) => void;
+  onSubmit: () => void;
 }
 
 export default function SubmitModal({ isOpen, onClose, onSubmit }: SubmitModalProps) {
@@ -17,20 +17,25 @@ export default function SubmitModal({ isOpen, onClose, onSubmit }: SubmitModalPr
     boltUrl: '',
     tags: '',
   });
-  const [loading, setLoading] = useState(false);
-  const { submitProject } = useProjectSubmit();
+  const { submitProject, loading } = useProjectSubmit();
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    
     try {
-      await submitProject({
-        ...formData,
+      const projectData = {
+        title: formData.title,
+        description: formData.description,
+        image: formData.image,
+        githubUrl: formData.githubUrl,
         tags: formData.tags.split(',').map((tag) => tag.trim()),
-      });
-      onSubmit(formData);
+      };
+
+      await submitProject(projectData);
+      
+      // Reset form
       setFormData({
         title: '',
         description: '',
@@ -39,10 +44,11 @@ export default function SubmitModal({ isOpen, onClose, onSubmit }: SubmitModalPr
         boltUrl: '',
         tags: '',
       });
+
+      // Call onSubmit to refresh the projects list
+      await onSubmit();
     } catch (error) {
       console.error('Error submitting project:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
